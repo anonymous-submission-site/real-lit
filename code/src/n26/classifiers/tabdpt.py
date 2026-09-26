@@ -1,0 +1,39 @@
+"""TabDPT lazy-import wrapper. Reference: Ma et al. (2025)."""
+from __future__ import annotations
+
+import numpy as np
+
+from n26.classifiers import register_classifier
+from n26.classifiers.base import Classifier
+
+
+@register_classifier("TabDPT")
+class TabDPTClassifier(Classifier):
+    """TabDPT wrapper. Requires the ``tabdpt`` package."""
+
+    def __init__(
+        self,
+        device: str | None = None,
+        n_estimators: int = 1,
+        **_: object,
+    ) -> None:
+        self.device = device
+        self.n_estimators = int(n_estimators)
+        self._model = None
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "TabDPTClassifier":
+        try:
+            from tabdpt import TabDPTClassifier as _TabDPT
+        except ImportError as exc:
+            raise NotImplementedError(
+                "TabDPT requires the public `tabdpt` package "
+                "(Ma et al. 2025)."
+            ) from exc
+        self._model = _TabDPT(device=self.device, n_estimators=self.n_estimators)
+        self._model.fit(X, y)
+        return self
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        if self._model is None:
+            raise RuntimeError("TabDPTClassifier.predict_proba called before .fit")
+        return np.asarray(self._model.predict_proba(X))
